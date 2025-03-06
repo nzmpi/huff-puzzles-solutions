@@ -15,15 +15,85 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function pushh(uint256 num) payable returns()
- #define function popp() payable returns()
- #define function read(uint256 index) payable returns(uint256)
- #define function length() payable returns(uint256)
- #define function write(uint256 index, uint256 num) payable returns()
+#define function pushh(uint256 num) payable returns()
+#define function popp() payable returns()
+#define function read(uint256 index) payable returns(uint256)
+#define function length() payable returns(uint256)
+#define function write(uint256 index, uint256 num) payable returns()
 
- #define error OutOfBounds()
- #define error ZeroArray()
+#define error OutOfBounds()
+#define error ZeroArray()
 
- #define macro MAIN() = takes(0) returns(0) {
+#define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
     
- }
+    // check if the selector is correct, otherwise jump to revert
+    dup1 __FUNC_SIG(pushh)  eq pushh_dest jumpi
+    dup1 __FUNC_SIG(popp)   eq popp_dest jumpi
+    dup1 __FUNC_SIG(read)   eq read_dest jumpi
+    dup1 __FUNC_SIG(length) eq length_dest jumpi
+    __FUNC_SIG(write)       eq write_dest jumpi
+    error_dest jump
+
+    pushh_dest:
+        // store the length at slot 0
+        push0 sload            // [length]
+        0x01 add               // [length + 1]
+        0x04 calldataload dup2 // [length + 1, num, length + 1]
+        // store the num at slot length + 1
+        sstore                 // [length + 1]
+        // store the updated length at slot 0
+        push0 sstore           // []
+        return_dest jump
+
+    popp_dest:
+        push0 sload                           // [length]
+        dup1 iszero zeroArrayError_dest jumpi // [length]
+        0x01 swap1 sub                        // [length - 1]
+        // only update the length, but don't remove the value
+        push0 sstore                          // []
+        return_dest jump
+    
+    read_dest:
+        INDEX_CHECK() // [index + 1]
+        sload         // [value]
+        returnValue_dest jump
+
+    length_dest:
+        push0 sload // [length]
+        returnValue_dest jump
+
+    write_dest:
+        INDEX_CHECK()     // [index + 1]
+        0x24 calldataload // [num, index + 1]
+        swap1 sstore      // []
+
+    return_dest:
+        push0 push0 return
+
+    returnValue_dest:
+        push0 mstore // []
+        0x20 push0 return
+
+    zeroArrayError_dest:
+        __ERROR(ZeroArray) push0 mstore // []
+        0x04 push0 revert
+
+    error_dest:
+        push0 push0 revert
+}
+
+#define macro INDEX_CHECK() = takes(0) returns(1) {
+    0x04 calldataload      // [index]
+    0x01 add               // [index + 1]
+    push0 sload dup2 gt    // [index + 1 > length, index + 1]
+    outOfBounds_dest jumpi // [index + 1]
+    return_dest jump
+
+    outOfBounds_dest:
+        __ERROR(OutOfBounds) push0 mstore
+        0x04 push0 revert
+
+    return_dest: // [index + 1]
+}

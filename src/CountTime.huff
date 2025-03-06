@@ -12,7 +12,35 @@
 #define function getTimeElapsed(uint256) payable returns(uint256)
 #define function getTimeUntil(uint256) payable returns(uint256)
 
-
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
 
+    // check if the selector is correct, otherwise jump to revert
+    dup1 __FUNC_SIG(getTimeElapsed) eq timeElapsed_dest jumpi
+    __FUNC_SIG(getTimeUntil)        eq timeUntil_dest jumpi
+    push0 push0 revert
+
+    timeElapsed_dest:
+        // read uint256 (skip selector)
+        0x04 calldataload // [_timestamp]
+        timestamp sub     // [timestamp - _timestamp]
+        // check for underflow
+        dup1 timestamp lt // [timestamp < timestamp - _timestamp, timestamp - _timestamp]
+        // return 0 if underflow
+        return_dest jumpi
+        // otherwise return the result
+        push0 mstore      // []
+        return_dest jump
+
+    timeUntil_dest:
+        // read uint256 (skip selector)
+        0x04 calldataload  // [_timestamp]
+        timestamp dup2 sub // [_timestamp - timestamp, _timestamp]
+        dup1 swap2 lt      // [_timestamp < _timestamp - timestamp, _timestamp - timestamp]
+        return_dest jumpi
+        push0 mstore       // []
+
+    return_dest:
+        0x20 push0 return // []        
 }

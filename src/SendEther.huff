@@ -8,9 +8,20 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function sendEther(address) payable returns()
+#define function sendEther(address) payable returns()
 
-
- #define macro MAIN() = takes(0) returns(0) {
+#define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
     
- }
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(sendEther) sub error_dest jumpi
+
+    push0 push0 push0 push0              // [0, 0, 0, 0] - offset and return
+    callvalue 0x04 calldataload gas call // [success]
+    iszero error_dest jumpi
+    push0 push0 return
+
+    error_dest:
+        push0 push0 revert
+}

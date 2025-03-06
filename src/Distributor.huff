@@ -10,9 +10,50 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function distribute(address[]) payable returns()
+#define function distribute(address[]) payable returns()
 
+#define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
+    
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(distribute) sub error_dest jumpi
 
- #define macro MAIN() = takes(0) returns(0) {
-   
- }
+    0x04 calldataload             // [offset]
+    0x04 add                      // [offset + 4]
+    dup1 calldataload             // [length, offset + 4]
+    // if length is zero revert early
+    dup1 iszero error_dest jumpi  // [length, offset + 4]
+    dup1 callvalue div            // [amount = msg.value / length, length, offset + 4]
+    // if amount is zero return early
+    dup1 iszero return_dest jumpi // [amount, length, offset + 4]
+    // substract 1 from length
+    swap1 0x01 swap1 sub          // [length - 1, amount, offset + 4]
+    swap2 0x20 add                // [offset + 4 + 32, amount, length - 1]
+    push0                         // [i = 0, offset + 4 + 32, amount, length - 1]
+
+    while_dest:
+        dup1 dup5                 // [length - 1, i, i, offset + 4 + 32, amount, length - 1]
+        gt iszero                 // [length - 1 > i == 0, i, offset + 4 + 32, amount, length - 1]
+        end_dest jumpi            // [i, offset + 4 + 32, amount, length - 1]
+        dup2 dup2 0x20 mul add    // [32 * i + offset + 4 + 32, i, offset + 4 + 32, amount, length - 1]
+        calldataload              // [arr[i], i, offset + 4 + 32, amount, length - 1]
+        push0 push0 push0 push0   // [0, 0, 0, 0, arr[i], i, offset + 4 + 32, amount, length - 1]
+        swap4 dup8 swap1 gas call // [success, i, offset + 4 + 32, amount, length - 1]
+        iszero error_dest jumpi   // [i, offset + 4 + 32, amount, length - 1]
+        0x01 add                  // [i + 1, offset + 4 + 32, amount, length - 1]
+        while_dest jump
+    end_dest:
+        // send what's left to the last address
+        0x20 mul add                     // [32 * i + offset + 4 + 32, amount, length - 1]
+        calldataload                     // [arr[i], amount, length - 1]
+        push0 push0 push0 push0          // [0, 0, 0, 0, arr[i], amount, length - 1]
+        swap4 selfbalance swap1 gas call // [success, amount, length - 1]
+        iszero error_dest jumpi          // [amount, length - 1]
+    
+    return_dest:
+        push0 push0 return
+
+    error_dest:
+        push0 push0 revert
+}

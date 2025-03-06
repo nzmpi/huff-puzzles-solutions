@@ -9,7 +9,25 @@
 
 #define function getTimeAndBlock() payable returns(uint256, uint256)
 
-
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload // [calldata]
+    0xe0 shr           // [selector] -> 0xe0 = 224 = 256 - 32
 
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(getTimeAndBlock) sub error_dest jumpi
+
+    // store in memory block.timestamp at offset 0
+    timestamp    // [timestamp]
+    push0 mstore // []
+
+    // store in memory block.number at offset 32
+    number      // [number]
+    0x20 mstore // []
+
+    // return 64 bytes of memory starting at offset 0
+    0x40 push0 return // []
+
+    error_dest:
+        push0 push0 revert
 }

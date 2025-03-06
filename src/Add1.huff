@@ -11,7 +11,21 @@
 
 #define function add1(uint256) payable returns(uint256)
 
-
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
 
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(add1) sub error_dest jumpi
+
+    // read uint256 (skip selector), add 1, store in memory at offset 0
+    0x04 calldataload // [number]
+    0x01 add // [number + 1]
+    push0 mstore // []
+
+    // return 32 bytes of memory starting at offset 0
+    0x20 push0 return // []
+
+    error_dest:
+        push0 push0 revert
 }

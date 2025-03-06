@@ -11,15 +11,26 @@
 
 #define function getMyCreator() payable returns(address)
 
-
 // STORAGE
 #define constant DEPLOYER = FREE_STORAGE_POINTER()
 
-
 #define macro CONSTRUCTOR() = takes(0) returns(0) {
-
+    // store msg.sender at DEPLOYER slot
+    caller [DEPLOYER] sstore // []
 }
 
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
 
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(getMyCreator) sub error_dest jumpi
+
+    // read from DEPLOYER slot
+    [DEPLOYER] sload // [deployer]
+    push0 mstore // []
+    0x20 push0 return // []
+
+    error_dest:
+        push0 push0 revert
 }

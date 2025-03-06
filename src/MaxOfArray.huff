@@ -10,5 +10,43 @@
 #define function maxOfArray(uint256[]) payable returns(uint256)
 
 #define macro MAIN() = takes(0) returns(0) {
-   
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
+
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(maxOfArray) sub error_dest jumpi
+
+    0x04 calldataload             // [offset]
+    0x04 add                      // [offset + 4]
+    dup1 calldataload             // [length, offset + 4]
+    // if length is zero revert early
+    dup1 iszero error_dest jumpi  // [length, offset + 4]
+    swap1 0x20 add                // [offset + 4 + 32, length]
+    push0 push0                   // [i = 0, max = 0, offset + 4 + 32, length]
+
+    while_dest:
+        dup1 dup5              // [length, i, i, max, offset + 4 + 32, length]
+        gt iszero              // [length > i == 0, i, max, offset + 4 + 32, length]
+        end_dest jumpi         // [i, max, offset + 4 + 32, length]
+        dup3 dup2 0x20 mul add // [32 * i + offset + 4 + 32, i, max, offset + 4 + 32, length]
+        calldataload dup1 dup4 // [max, arr[i], arr[i], i, max, offset + 4 + 32, length]
+        lt                     // [max < arr[i], arr[i], i, max, offset + 4 + 32, length]
+        // if max < arr[i], update max
+        update_max_dest jumpi
+        // otherwise pop arr[i]
+        pop
+        continue_dest:
+            0x01 add           // [i + 1, max, offset + 4 + 32, length]
+            while_dest jump
+    end_dest:
+        pop               // [max, offset + 4 + 32, length]
+        push0 mstore      // [offset + 4 + 32, length]
+        0x20 push0 return
+
+    update_max_dest:
+        swap2 pop // [i, arr[i], offset + 4 + 32, length]
+        continue_dest jump
+
+    error_dest:
+        push0 push0 revert
 }

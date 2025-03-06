@@ -12,5 +12,42 @@
 #define function withdraw(uint256) payable returns()
 
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
+    
+    // no calldata
+    dup1 iszero receive_dest jumpi // [selector]
+    
+    // check if the selector is correct, otherwise jump to revert
+    dup1 __FUNC_SIG(balanceOf) eq balanceOf_dest jumpi
+    __FUNC_SIG(withdraw)       eq withdraw_dest jumpi
+    error_dest jump
 
+    balanceOf_dest:
+        // get the address from calldata at offset 4
+        0x04 calldataload // [address]
+        // keep all deposits at slot `address`
+        sload             // [deposit]
+        push0 mstore      // []
+        0x20 push0 return
+    
+    withdraw_dest:
+        caller sload                   // [deposit]
+        0x04 calldataload dup2 dup2 gt // [amount > deposit, amount, deposit]
+        error_dest jumpi
+        dup1 swap2 sub                 // [deposit - amount, amount]
+        caller sstore                  // [amount]
+        push0 push0 push0 push0        // [0, 0, 0, 0, amount]
+        swap4 caller gas call          // [success]
+        iszero error_dest jumpi
+        push0 push0 return      
+
+    receive_dest:
+        caller              // [msg.sender]
+        sload callvalue add // [msg.value + deposit]
+        caller sstore       // []
+        push0 push0 return
+
+    error_dest:
+        push0 push0 revert
 }

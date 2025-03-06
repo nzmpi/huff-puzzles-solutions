@@ -9,5 +9,12 @@
  */
 
 #define macro MAIN() = takes(0) returns(0) {
+    // check if msg.value == 0
+    push0 callvalue eq // [msg.value == 0]
+    return_dest jumpi
+    // otherwise revert
+    push0 push0 revert 
 
+    return_dest:
+        push0 push0 return
 }

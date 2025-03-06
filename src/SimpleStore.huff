@@ -14,7 +14,26 @@
 #define function store(uint256) payable returns()
 #define function read() payable returns(uint256)
 
-
 #define macro MAIN() = takes(0) returns(0) {
-    
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
+
+    // check if the selector is correct, otherwise revert
+    dup1 __FUNC_SIG(store) eq store_dest jumpi
+    __FUNC_SIG(read)       eq read_dest jumpi
+    push0 push0 revert
+
+    store_dest:
+        // read uint256 and store at slot 0
+        0x04 calldataload // [value]
+        push0 sstore      // []
+        return_dest jump
+
+    read_dest:
+        // read from slot 0
+        push0 sload  // [value]
+        push0 mstore // []
+
+    return_dest:
+        0x20 push0 return // []        
 }

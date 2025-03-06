@@ -8,5 +8,28 @@
 #define function donated(address) payable returns(uint256)
 
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
     
+    // no calldata
+    dup1 iszero receive_dest jumpi // [selector]
+    
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(donated) sub error_dest jumpi
+
+    // get the address from calldata at offset 4
+    0x04 calldataload // [address]
+    // keep all donations at slot `address`
+    sload             // [donation]
+    push0 mstore      // []
+    0x20 push0 return
+
+    receive_dest:
+        caller              // [msg.sender]
+        sload callvalue add // [msg.value + donation]
+        caller sstore       // []
+        push0 push0 return
+
+    error_dest:
+        push0 push0 revert
 }

@@ -11,7 +11,33 @@
 
 #define function multiply(uint256, uint256) payable returns(uint256)
 
-
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
 
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(multiply) sub error_dest jumpi
+
+    // read the first uint256 (skip selector)
+    0x04 calldataload // [number1]
+    // return early if 0
+    dup1 iszero return_dest jumpi
+    // read the second uint256
+    0x24 calldataload // [number2, number1]
+    // return early if 0
+    dup1 iszero return_dest jumpi
+    // copy and multiply
+    dup2 dup2         // [number2, number1, number2, number1]
+    mul swap2 dup3    // [number1 * number2, number1, number2, number1 * number2]
+    // check for overflow
+    div eq            // [number1 * number2 / number1 == number2, number1 * number2]
+    iszero error_dest jumpi
+    push0 mstore      // []
+
+    // return 32 bytes of memory starting at offset 0
+    return_dest:
+        0x20 push0 return // []
+
+    error_dest:
+        push0 push0 revert
 }

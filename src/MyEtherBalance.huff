@@ -8,5 +8,11 @@
  */
 
 #define macro MAIN() = takes(0) returns(0) {
-   
+    // store in memory balance of msg.sender at offset 0
+    caller       // [caller]
+    balance      // [balance]
+    push0 mstore // []
+
+    // return 32 bytes of memory starting at offset 0
+    0x20 push0 return // []
 }

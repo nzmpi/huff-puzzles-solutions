@@ -10,7 +10,7 @@ interface Distributor {
 }
 
 contract DistributeTest is Test, NonMatchingSelectorHelper {
-    address[16] precompiles_and_foundry_helper_addresses = [
+    address[18] precompiles_and_foundry_helper_addresses = [
         address(1),
         address(2),
         address(3),
@@ -26,12 +26,14 @@ contract DistributeTest is Test, NonMatchingSelectorHelper {
         0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38, // default sender
         0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f, // default test contract
         0xcA11bde05977b3631167028862bE2a173976CA11, // multicall3 address
+        0x5F65cD7D792E9746EF82929D60de9a1C526f93A5,
         address(this)
     ];
     Distributor public distributor;
 
     function setUp() public {
         distributor = Distributor(HuffDeployer.config().deploy("Distributor"));
+        precompiles_and_foundry_helper_addresses[17] = address(distributor);
     }
 
     function testDistribute(uint256 value, address[] memory receivers) public {

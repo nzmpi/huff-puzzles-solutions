@@ -10,7 +10,37 @@
 
 #define function sumArray(uint256[]) payable returns(uint256)
 
-
 #define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
 
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(sumArray) sub error_dest jumpi
+
+    0x04 calldataload             // [offset]
+    0x04 add                      // [offset + 4]
+    dup1 calldataload             // [length, offset + 4]
+    // if length is zero return early
+    dup1 iszero return_dest jumpi // [length, offset + 4]
+    swap1 0x20 add                // [offset + 4 + 32, length]
+    push0 push0                   // [i = 0, sum = 0, offset + 4 + 32, length]
+
+    while_dest:
+        dup1 dup5              // [length, i, i, sum, offset + 4 + 32, length]
+        gt iszero              // [length > i == 0, i, sum, offset + 4 + 32, length]
+        end_dest jumpi         // [i, sum, offset + 4 + 32, length]
+        dup3 dup2 0x20 mul add // [32 * i + offset + 4 + 32, i, sum, offset + 4 + 32, length]
+        calldataload           // [arr[i], i, sum, offset + 4 + 32, length]
+        swap1 swap2 add        // [sum + arr[i], i, offset + 4 + 32, length]
+        swap1 0x01 add         // [i + 1, sum + arr[i], offset + 4 + 32, length]
+        while_dest jump
+    end_dest:
+        pop // [sum, offset + 4 + 32, length]
+
+    return_dest:
+        push0 mstore      // []
+        0x20 push0 return // []   
+
+    error_dest:
+        push0 push0 revert
 }

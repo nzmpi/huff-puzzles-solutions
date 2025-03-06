@@ -9,9 +9,30 @@
  *  NOTICE: The contract should revert when an unrecognized function is called
  */
 
- #define function makeContract() payable returns(address)
+#define function makeContract() payable returns(address)
 
+#define constant CREATION_CODE = 0x608060405269620caffe5f5260205ff35f52600a6016f3fe
 
- #define macro MAIN() = takes(0) returns(0) {
-    
- }
+#define macro MAIN() = takes(0) returns(0) {
+    // get the selector from calldata at offset 0
+    push0 calldataload 0xe0 shr // [selector] -> 0xe0 = 224 = 256 - 32
+
+    // check if the selector is correct, otherwise jump to revert
+    __FUNC_SIG(makeContract) sub error_dest jumpi
+
+    [CREATION_CODE]        // [creationCode]
+    push0 mstore           // []
+    // 0x18 = length of creationCode, 0x08 = offset
+    0x18 0x08 push0 create // [address]
+    push0 mstore           // []
+    0x20 push0 return
+
+    error_dest:
+        push0 push0 revert
+}
+
+/**
+ * Creation code: 0x608060405269620caffe5f5260205ff35f52600a6016f3fe
+ *               0x608060405269 620caffe5f5260205ff3 5f52600a6016f3fe
+ * Runtime code: 0x620caffe5f5260205ff3
+ */
